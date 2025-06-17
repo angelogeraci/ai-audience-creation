@@ -20,10 +20,10 @@ The application is divided into two main parts:
 ## Screenshots
 
 ### Main Interface
-![Main Interface](https://via.placeholder.com/800x450.png?text=Main+Interface)
+![screencapture-localhost-3000-2025-06-17-22_06_13](https://github.com/user-attachments/assets/45cc7070-8203-4aa9-ab1f-77f8790bbd21)
 
 ### Audience Results
-![Audience Results](https://via.placeholder.com/800x450.png?text=Audience+Results)
+![screencapture-localhost-3000-2025-06-17-22_08_44](https://github.com/user-attachments/assets/c89e73be-4cb5-470a-90a4-66cce7f12f15)
 
 ## Installation
 
