@@ -8,7 +8,9 @@ import {
   InputAdornment,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import SendIcon from '@mui/icons-material/Send';
@@ -16,26 +18,28 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const EXAMPLE_DESCRIPTIONS = [
   {
-    title: "Passionnés de luxe",
-    description: "Je souhaite cibler les personnes qui sont passionnées par les voitures de luxe Ferrari et qui s'intéressent également à la mode haut de gamme et aux montres de luxe."
+    title: "Luxury enthusiasts",
+    description: "I want to target people who are passionate about Ferrari luxury cars and are also interested in high-end fashion and luxury watches."
   },
   {
-    title: "Entrepreneurs tech",
-    description: "Je cherche à atteindre des entrepreneurs du secteur tech qui s'intéressent au marketing digital, à l'intelligence artificielle et qui suivent les actualités des startups."
+    title: "Tech entrepreneurs",
+    description: "I'm looking to reach tech sector entrepreneurs who are interested in digital marketing, artificial intelligence, and who follow startup news."
   },
   {
-    title: "Parents fitness",
-    description: "Je veux cibler les parents qui s'intéressent au fitness, à la nutrition saine et qui cherchent à concilier vie de famille et bien-être personnel."
+    title: "Fitness parents",
+    description: "I want to target parents who are interested in fitness, healthy nutrition, and who seek to balance family life and personal well-being."
   }
 ];
 
 const AudienceForm = ({ onSubmit }) => {
   const [description, setDescription] = useState('');
+  const [retryOpenAI, setRetryOpenAI] = useState(false);
+  const [maxRetries, setMaxRetries] = useState(1);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (description.trim()) {
-      onSubmit(description);
+      onSubmit(description, { retryOpenAI, maxRetries });
     }
   };
 
@@ -50,8 +54,8 @@ const AudienceForm = ({ onSubmit }) => {
         multiline
         rows={6}
         variant="outlined"
-        label="Description de l'audience"
-        placeholder="Décrivez l'audience que vous souhaitez cibler en langage naturel. Par exemple: Je souhaite cibler les personnes qui aiment la photographie et les voyages, qui ont entre 25 et 40 ans..."
+        label="Audience description"
+        placeholder="Describe the audience you want to target in natural language. For example: I want to target people who love photography and travel, who are between 25 and 40 years old..."
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         required
@@ -72,21 +76,44 @@ const AudienceForm = ({ onSubmit }) => {
         size="large"
         disabled={!description.trim()}
         endIcon={<SendIcon />}
-        sx={{ mb: 4 }}
+        sx={{ mb: 2 }}
       >
-        Générer l'audience
+        Generate audience
       </Button>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={retryOpenAI}
+              onChange={e => setRetryOpenAI(e.target.checked)}
+              color="primary"
+            />
+          }
+          label="Retry OpenAI if no Meta interest is found"
+        />
+        <TextField
+          type="number"
+          label="Number of attempts"
+          size="small"
+          value={maxRetries}
+          onChange={e => setMaxRetries(Number(e.target.value))}
+          disabled={!retryOpenAI}
+          inputProps={{ min: 1, max: 5 }}
+          sx={{ width: 160, ml: 2 }}
+        />
+      </Box>
 
       <Divider sx={{ my: 4 }}>
         <Typography variant="body2" color="text.secondary">
-          ou utilisez un exemple
+          or use an example
         </Typography>
       </Divider>
       
       <Box sx={{ mt: 2 }}>
         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
           <AutoAwesomeIcon sx={{ mr: 1 }} color="secondary" />
-          Exemples de descriptions
+          Example descriptions
         </Typography>
         
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>

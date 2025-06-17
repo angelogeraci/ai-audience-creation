@@ -1,7 +1,7 @@
 {
   "name": "ai-audience-creation-server",
   "version": "1.0.0",
-  "description": "Backend pour l'application de création d'audiences Meta basées sur l'IA",
+  "description": "Backend for the Meta audience creation app powered by AI",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

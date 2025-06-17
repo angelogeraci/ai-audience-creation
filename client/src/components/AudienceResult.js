@@ -30,7 +30,7 @@ const AudienceResult = ({ result, onReset }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [copied, setCopied] = useState(false);
 
-  const { description, finalAudience, aiCriteria, validatedCriteria } = result;
+  const { description, finalAudience, aiCriteria, validatedCriteria, generationTimeMs, timings } = result;
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -42,18 +42,26 @@ const AudienceResult = ({ result, onReset }) => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Calculer des métriques de l'audience pour l'affichage
-  const totalGroups = finalAudience.structure.groups.length;
-  const totalInterests = finalAudience.structure.groups.reduce(
-    (acc, group) => acc + group.interests.length, 0
-  );
+  // Compute audience metrics for display
+  const totalThemes = finalAudience.structure.themes ? finalAudience.structure.themes.length : 0;
+  const totalInterests = finalAudience.structure.themes
+    ? finalAudience.structure.themes.reduce((acc, theme) => {
+        return acc + Object.entries(theme)
+          .filter(([key, value]) => key !== 'name' && Array.isArray(value))
+          .reduce((sum, [key, value]) => sum + value.length, 0);
+      }, 0)
+    : 0;
   
-  // Calculer l'audience estimée (basée sur les données Meta si disponibles)
-  let audienceSize = 'Non disponible';
-  if (validatedCriteria.groups && validatedCriteria.groups.length > 0) {
-    const firstGroup = validatedCriteria.groups[0];
-    if (firstGroup.interests && firstGroup.interests.length > 0) {
-      const firstInterest = firstGroup.interests[0];
+  // Compute estimated audience (based on Meta data if available)
+  let audienceSize = 'Not available';
+  if (validatedCriteria.themes && validatedCriteria.themes.length > 0) {
+    const firstTheme = validatedCriteria.themes[0];
+    // Find the first non-empty interest subsection
+    const firstSection = Object.entries(firstTheme).find(
+      ([key, value]) => key !== 'name' && Array.isArray(value) && value.length > 0
+    );
+    if (firstSection) {
+      const firstInterest = firstSection[1][0];
       if (firstInterest.audience_size_lower_bound && firstInterest.audience_size_upper_bound) {
         const minSize = firstInterest.audience_size_lower_bound.toLocaleString();
         const maxSize = firstInterest.audience_size_upper_bound.toLocaleString();
@@ -62,11 +70,70 @@ const AudienceResult = ({ result, onReset }) => {
     }
   }
 
+  // Direct extraction of sociodemographic fields from raw OpenAI response
+  let openAISocioDemo = { gender: 'Not specified', geolocation: 'Not specified', age: 'Not specified' };
+  try {
+    const raw = typeof result.rawOpenAIResponse === 'string'
+      ? JSON.parse(result.rawOpenAIResponse)
+      : result.rawOpenAIResponse;
+    const extracted = raw['Extracted Fields'] || raw['fields'] || {};
+    openAISocioDemo = {
+      gender: extracted.Gender || extracted.gender || 'Not specified',
+      geolocation: extracted.Geolocation || extracted.geolocation || 'Not specified',
+      age: extracted.Age || extracted.age || 'Not specified'
+    };
+  } catch (e) {
+    // fallback already initialized
+  }
+
+  // Generate the consistent line to display
+  const socioDemoLine = `Gender: ${openAISocioDemo.gender} | Geolocation: ${openAISocioDemo.geolocation} | Age: ${openAISocioDemo.age}`;
+  // Replace all occurrences of the sociodemo line with the consistent version
+  let audienceText = finalAudience.text;
+  audienceText = audienceText.replace(
+    /Gender\s*:\s*.*\|\s*Geolocation\s*:\s*.*\|\s*Age\s*:\s*.*/gi,
+    socioDemoLine
+  );
+
+  // Add a utility function to parse the structured output of the prompt
+  function parseStructuredOutput(text) {
+    // Split by lines and group by sections
+    const lines = text.split(/\r?\n/).map(l => l.trim());
+    const fields = {};
+    const themes = [];
+    let currentTheme = null;
+    let currentSection = null;
+
+    for (let line of lines) {
+      if (/^Gender:/i.test(line)) fields.gender = line.replace(/^Gender:/i, '').trim();
+      else if (/^Geolocation:/i.test(line)) fields.geolocation = line.replace(/^Geolocation:/i, '').trim();
+      else if (/^Age:/i.test(line)) fields.age = line.replace(/^Age:/i, '').trim();
+      else if (/^Theme \d+\s*–/i.test(line)) {
+        if (currentTheme) themes.push(currentTheme);
+        currentTheme = { title: line, clusters: [], ands: [] };
+        currentSection = null;
+      } else if (/^TargetingClusters/i.test(line)) {
+        currentSection = 'clusters';
+      } else if (/^AND\d+/i.test(line)) {
+        currentSection = 'ands';
+      } else if (line && currentSection && currentTheme) {
+        // Add the line to the current section
+        if (currentSection === 'clusters') {
+          currentTheme.clusters = currentTheme.clusters.concat(line.split(',').map(s => s.trim()).filter(Boolean));
+        } else if (currentSection === 'ands') {
+          currentTheme.ands = currentTheme.ands.concat(line.split(',').map(s => s.trim()).filter(Boolean));
+        }
+      }
+    }
+    if (currentTheme) themes.push(currentTheme);
+    return { fields, themes };
+  }
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" component="h2">
-          Résultat de l'audience
+          Audience result
         </Typography>
         
         <Button 
@@ -74,14 +141,25 @@ const AudienceResult = ({ result, onReset }) => {
           startIcon={<RestartAltIcon />}
           onClick={onReset}
         >
-          Nouvelle audience
+          New audience
         </Button>
       </Box>
+      {timings && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            <b>Generation time details:</b><br/>
+            OpenAI generation: <b>{timings.openai}s</b><br/>
+            Meta validation: <b>{timings.meta}s</b><br/>
+            Similarity search: <b>{timings.similarity}s</b><br/>
+            <span style={{textDecoration: 'underline'}}>Total duration</span>: <b>{timings.total}s</b>
+          </Typography>
+        </Box>
+      )}
       
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Description d'origine
+            Original description
           </Typography>
           <Typography variant="body1" sx={{ fontStyle: 'italic' }}>
             "{description}"
@@ -93,9 +171,9 @@ const AudienceResult = ({ result, onReset }) => {
         <Card sx={{ flexGrow: 1, minWidth: '200px' }}>
           <CardContent>
             <Typography variant="h6" color="primary">
-              {totalGroups}
+              {totalThemes}
             </Typography>
-            <Typography variant="body2">Groupes d'intérêt</Typography>
+            <Typography variant="body2">Themes</Typography>
           </CardContent>
         </Card>
         
@@ -104,7 +182,7 @@ const AudienceResult = ({ result, onReset }) => {
             <Typography variant="h6" color="primary">
               {totalInterests}
             </Typography>
-            <Typography variant="body2">Intérêts ciblés</Typography>
+            <Typography variant="body2">Targeted interests</Typography>
           </CardContent>
         </Card>
         
@@ -114,21 +192,31 @@ const AudienceResult = ({ result, onReset }) => {
               <PersonIcon sx={{ mr: 1, fontSize: '1rem' }} />
               {audienceSize}
             </Typography>
-            <Typography variant="body2">Audience estimée</Typography>
+            <Typography variant="body2">Estimated audience</Typography>
           </CardContent>
         </Card>
       </Box>
       
       <Box sx={{ mb: 4 }}>
         <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
-          <Tab label="Définition d'audience" />
-          <Tab label="Critères validés" />
-          <Tab label="Critères proposés par l'IA" />
+          <Tab label="Audience definition" />
+          <Tab label="Validated criteria" />
+          <Tab label="AI proposed criteria" />
+          <Tab label="Raw response" />
         </Tabs>
         
         <Box sx={{ p: 3, border: 1, borderColor: 'divider', borderTop: 0 }}>
           {activeTab === 0 && (
             <>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  <b>Gender:</b> {openAISocioDemo.gender}
+                  {'  |  '}
+                  <b>Geolocation:</b> {openAISocioDemo.geolocation}
+                  {'  |  '}
+                  <b>Age:</b> {openAISocioDemo.age}
+                </Typography>
+              </Box>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                 <Button
                   variant="outlined"
@@ -137,48 +225,64 @@ const AudienceResult = ({ result, onReset }) => {
                   onClick={handleCopy}
                   color={copied ? "success" : "primary"}
                 >
-                  {copied ? "Copié !" : "Copier"}
+                  {copied ? "Copied!" : "Copy"}
                 </Button>
               </Box>
-              
               <SyntaxHighlighter
                 language="text"
                 style={materialLight}
                 customStyle={{ borderRadius: '4px' }}
               >
-                {finalAudience.text}
+                {audienceText}
               </SyntaxHighlighter>
             </>
           )}
           
           {activeTab === 1 && (
             <>
-              {validatedCriteria.groups.map((group, groupIndex) => (
-                <Box key={groupIndex} sx={{ mb: 3 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2">
+                  <b>Gender:</b> {finalAudience.structure.fields?.gender || 'Not specified'}
+                  {'  |  '}
+                  <b>Geolocation:</b> {finalAudience.structure.fields?.geolocation || 'Not specified'}
+                  {'  |  '}
+                  <b>Age:</b> {finalAudience.structure.fields?.age || 'Not specified'}
+                </Typography>
+              </Box>
+              {validatedCriteria.themes && validatedCriteria.themes.map((theme, themeIndex) => (
+                <Box key={themeIndex} sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    {group.name}
+                    {theme.name}
                   </Typography>
-                  
-                  <TableContainer component={Paper} variant="outlined">
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Intérêt suggéré</TableCell>
-                          <TableCell>Intérêt validé</TableCell>
-                          <TableCell>ID Meta</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {group.interests.map((interest, interestIndex) => (
-                          <TableRow key={interestIndex}>
-                            <TableCell>{interest.original}</TableCell>
-                            <TableCell>{interest.matched}</TableCell>
-                            <TableCell>{interest.id}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
+                  {Object.entries(theme).filter(([key, value]) => key !== 'name' && Array.isArray(value)).map(([section, interests], sectionIdx) => (
+                    <Box key={sectionIdx} sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="primary" gutterBottom>
+                        {section}
+                      </Typography>
+                      <TableContainer component={Paper} variant="outlined">
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Suggested interest</TableCell>
+                              <TableCell>Validated interest</TableCell>
+                              <TableCell>Meta ID</TableCell>
+                              <TableCell>Similarity score</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {interests.map((interest, interestIndex) => (
+                              <TableRow key={interestIndex}>
+                                <TableCell>{interest.original}</TableCell>
+                                <TableCell>{interest.matched}</TableCell>
+                                <TableCell>{interest.id}</TableCell>
+                                <TableCell>{interest.score !== undefined ? `${(interest.score * 100).toFixed(0)}%` : '-'}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  ))}
                 </Box>
               ))}
             </>
@@ -186,25 +290,46 @@ const AudienceResult = ({ result, onReset }) => {
           
           {activeTab === 2 && (
             <>
-              {aiCriteria.groups.map((group, groupIndex) => (
-                <Box key={groupIndex} sx={{ mb: 3 }}>
+              {aiCriteria.themes && aiCriteria.themes.map((theme, themeIndex) => (
+                <Box key={themeIndex} sx={{ mb: 3 }}>
                   <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    {group.name}
+                    {theme.name}
                   </Typography>
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {group.interests.map((interest, interestIndex) => (
-                      <Chip 
-                        key={interestIndex} 
-                        label={interest} 
-                        variant="outlined"
-                        color="primary"
-                      />
-                    ))}
-                  </Box>
+                  {Object.entries(theme).filter(([key, value]) => key !== 'name' && Array.isArray(value)).map(([section, interests], sectionIdx) => (
+                    <Box key={sectionIdx} sx={{ mb: 2 }}>
+                      <Typography variant="subtitle2" color="primary" gutterBottom>
+                        {section}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {interests.map((interest, interestIndex) => (
+                          <Chip 
+                            key={interestIndex} 
+                            label={typeof interest === 'string' ? interest : (interest.original || interest.matched || interest.id || '')} 
+                            variant="outlined"
+                            color="primary"
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  ))}
                 </Box>
               ))}
             </>
+          )}
+          
+          {activeTab === 3 && (
+            <Box>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                Raw OpenAI response
+              </Typography>
+              <SyntaxHighlighter
+                language="json"
+                style={materialLight}
+                customStyle={{ borderRadius: '4px', maxHeight: 400, overflow: 'auto' }}
+              >
+                {typeof result.rawOpenAIResponse === 'string' ? result.rawOpenAIResponse : JSON.stringify(result.rawOpenAIResponse, null, 2)}
+              </SyntaxHighlighter>
+            </Box>
           )}
         </Box>
       </Box>

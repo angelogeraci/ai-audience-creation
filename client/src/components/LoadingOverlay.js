@@ -16,10 +16,10 @@ const LoadingOverlay = () => {
       <CircularProgress color="primary" size={60} thickness={4} />
       <Box sx={{ mt: 3, textAlign: 'center' }}>
         <Typography variant="h6" component="div" gutterBottom>
-          Création de votre audience en cours...
+          Creating your audience...
         </Typography>
         <Typography variant="body2" sx={{ maxWidth: '400px' }}>
-          Nous analysons votre description, générons les critères et les validons avec l'API Meta.
+          We are analyzing your description, generating the criteria, and validating them with the Meta API.
         </Typography>
       </Box>
     </Backdrop>

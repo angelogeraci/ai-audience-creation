@@ -1,25 +1,20 @@
 /**
- * Vérifie si deux intérêts sont des doublons
- * @param {Object} interest1 - Premier intérêt
- * @param {Object} interest2 - Second intérêt
- * @returns {boolean} - true si les intérêts sont considérés comme doublons
+ * Check if two interests are duplicates
+ * @param {Object} interest1 - First interest
+ * @param {Object} interest2 - Second interest
+ * @returns {boolean} - true if the interests are considered duplicates
  */
 function areDuplicateInterests(interest1, interest2) {
-  // Vérifier si les IDs sont identiques
+  // Check if IDs are identical
   if (interest1.id === interest2.id) {
     return true;
   }
   
-  // Vérifier si les noms sont très similaires
+  // Check if names are very similar
   const name1 = interest1.matched.toLowerCase();
   const name2 = interest2.matched.toLowerCase();
   
-  // Correspondance exacte des noms
-  if (name1 === name2) {
-    return true;
-  }
-  
-  // Sous-chaîne (un nom contient l'autre)
+  // Substring (one name contains the other)
   if (name1.includes(name2) || name2.includes(name1)) {
     return true;
   }
@@ -28,9 +23,9 @@ function areDuplicateInterests(interest1, interest2) {
 }
 
 /**
- * Supprime les doublons entre les différents groupes d'intérêts
- * @param {Array} groups - Groupes d'intérêts validés
- * @returns {Array} - Groupes sans doublons
+ * Remove duplicates between different interest groups
+ * @param {Array} groups - Validated interest groups
+ * @returns {Array} - Groups without duplicates
  */
 function removeDuplicates(groups) {
   if (!groups || groups.length <= 1) {
@@ -44,7 +39,7 @@ function removeDuplicates(groups) {
     const uniqueInterests = [];
     
     for (const interest of group.interests) {
-      // Vérifier si cet intérêt est un doublon de quelque chose qu'on a déjà vu
+      // Check if this interest is a duplicate of something we've already seen
       const isDuplicate = allInterests.some(existingInterest => 
         areDuplicateInterests(interest, existingInterest)
       );
@@ -55,7 +50,7 @@ function removeDuplicates(groups) {
       }
     }
     
-    // Ajouter le groupe uniquement s'il n'est pas vide après suppression des doublons
+    // Add the group only if it is not empty after removing duplicates
     if (uniqueInterests.length > 0) {
       processedGroups.push({
         name: group.name,
@@ -68,42 +63,64 @@ function removeDuplicates(groups) {
 }
 
 /**
- * Génère le texte final de l'audience pour Meta Campaign Manager
- * @param {Object} validatedCriteria - Structure de critères validés
- * @returns {Object} - Audience formatée pour Meta
+ * Generate the final audience text for Meta Campaign Manager
+ * @param {Object} validatedCriteria - Validated criteria structure
+ * @returns {Object} - Audience formatted for Meta
  */
 function buildFinalAudience(validatedCriteria) {
-  // Supprimer les doublons entre les groupes
-  const uniqueGroups = removeDuplicates(validatedCriteria.groups);
-  
-  // Générer la représentation textuelle
+  // Nouvelle structure : validatedCriteria.themes
+  const allInterests = [];
   const textRepresentation = [
-    'INCLURE les personnes qui correspondent à TOUS les critères suivants:',
+    'INCLUDE people who match ALL of the following criteria:',
+    '',
+    // Add fields if present
+    validatedCriteria.fields ? `Gender: ${validatedCriteria.fields.gender || 'Not specified'} | Geolocation: ${validatedCriteria.fields.geolocation || 'Not specified'} | Age: ${validatedCriteria.fields.age || 'Not specified'}` : '',
     ''
   ];
-  
-  uniqueGroups.forEach((group, index) => {
-    textRepresentation.push(`Groupe ${index + 1} (${group.name.replace(/Groupe \d+ \((.+)\)/, '$1')}):`);  
-    
-    const interestTerms = group.interests.map(i => `"${i.matched}"`);
-    textRepresentation.push(`  - Intérêt pour: ${interestTerms.join(' OR ')}`)
+  const apiThemes = [];
+
+  if (!validatedCriteria.themes || !Array.isArray(validatedCriteria.themes)) {
+    return {
+      text: 'No valid audience found.',
+      structure: { themes: [] }
+    };
+  }
+
+  validatedCriteria.themes.forEach((theme, tIdx) => {
+    textRepresentation.push(`${theme.name} :`);
+    const apiTheme = { name: theme.name };
+    // For each interest subsection (except 'name')
+    Object.entries(theme).forEach(([section, interests]) => {
+      if (section === 'name' || !Array.isArray(interests)) return;
+      // Filter by similarity >= 0.75 (ratio)
+      const filteredInterests = interests.filter(interest => interest.score >= 0.75);
+      // Remove duplicates from all interests
+      const uniqueInterests = filteredInterests.filter(interest => {
+        const isDuplicate = allInterests.some(existing =>
+          existing.id === interest.id ||
+          (existing.matched && interest.matched && (
+            existing.matched.toLowerCase() === interest.matched.toLowerCase() ||
+            existing.matched.toLowerCase().includes(interest.matched.toLowerCase()) ||
+            interest.matched.toLowerCase().includes(existing.matched.toLowerCase())
+          ))
+        );
+        if (!isDuplicate) allInterests.push(interest);
+        return !isDuplicate;
+      });
+      if (uniqueInterests.length > 0) {
+        // Add to text display
+        textRepresentation.push(`  - ${section} : ${uniqueInterests.map(i => `"${i.matched}"`).join(' OR ')}`);
+        // Add to API structure
+        apiTheme[section] = uniqueInterests.map(i => ({ id: i.id, name: i.matched }));
+      }
+    });
     textRepresentation.push('');
+    apiThemes.push(apiTheme);
   });
-  
-  // Générer la représentation structurée pour l'API
-  const apiRepresentation = {
-    groups: uniqueGroups.map(group => ({
-      name: group.name,
-      interests: group.interests.map(interest => ({
-        id: interest.id,
-        name: interest.matched
-      }))
-    }))
-  };
-  
+
   return {
     text: textRepresentation.join('\n'),
-    structure: apiRepresentation
+    structure: { fields: validatedCriteria.fields || {}, themes: apiThemes }
   };
 }
 

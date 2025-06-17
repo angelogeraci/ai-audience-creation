@@ -1,48 +1,48 @@
 # AI Audience Creation
 
-Application pour créer des audiences Meta basées sur des descriptions en langage naturel en utilisant l'IA.
+Application to create Meta audiences based on natural language descriptions using AI.
 
-## Fonctionnalités
+## Features
 
-- Saisie de description d'audience en langage naturel
-- Traduction en critères d'audience Meta via OpenAI
-- Validation des critères via l'API Marketing de Meta
-- Génération d'une définition d'audience utilisable sur Meta Campaign Manager
-- Élimination des doublons entre critères
+- Input audience description in natural language
+- Translation into Meta audience criteria via OpenAI
+- Validation of criteria via Meta Marketing API
+- Generation of an audience definition usable in Meta Campaign Manager
+- Removal of duplicate criteria
 
-## Structure de l'application
+## Application Structure
 
-L'application est divisée en deux parties principales :
+The application is divided into two main parts:
 
-- **Frontend (React)** : Interface utilisateur pour saisir les descriptions et visualiser les audiences générées
-- **Backend (Node.js)** : API pour traiter les requêtes, communiquer avec OpenAI et l'API Marketing de Meta
+- **Frontend (React)**: User interface to input descriptions and view generated audiences
+- **Backend (Node.js)**: API to process requests, communicate with OpenAI and the Meta Marketing API
 
-## Captures d'écran
+## Screenshots
 
-### Interface principale
-![Interface principale](https://via.placeholder.com/800x450.png?text=Interface+principale)
+### Main Interface
+![Main Interface](https://via.placeholder.com/800x450.png?text=Main+Interface)
 
-### Résultats d'audience
-![Résultats d'audience](https://via.placeholder.com/800x450.png?text=Resultats+d%27audience)
+### Audience Results
+![Audience Results](https://via.placeholder.com/800x450.png?text=Audience+Results)
 
 ## Installation
 
-### Prérequis
+### Prerequisites
 
 - Node.js (v14+)
-- npm ou yarn
-- Compte développeur Meta avec accès à l'API Marketing
-- Clé API OpenAI
+- npm or yarn
+- Meta developer account with access to the Marketing API
+- OpenAI API key
 
-### Configuration
+### Setup
 
-1. Cloner le repository
+1. Clone the repository
    ```
    git clone https://github.com/angelogeraci/ai-audience-creation.git
    cd ai-audience-creation
    ```
 
-2. Installer les dépendances (backend et frontend)
+2. Install dependencies (backend and frontend)
    ```
    # Backend
    cd server
@@ -53,69 +53,69 @@ L'application est divisée en deux parties principales :
    npm install
    ```
 
-3. Configurer les variables d'environnement
-   - Créer un fichier `.env` dans le dossier `server` basé sur `.env.example`
-   - Ajouter vos clés API Meta et OpenAI
+3. Configure environment variables
+   - Create a `.env` file in the `server` folder based on `.env.example`
+   - Add your Meta and OpenAI API keys
 
    ```
    # server/.env
    PORT=5000
    
    # Meta API
-   META_APP_ID=votre_app_id
-   META_APP_SECRET=votre_app_secret
-   META_ACCESS_TOKEN=votre_access_token
+   META_APP_ID=your_app_id
+   META_APP_SECRET=your_app_secret
+   META_ACCESS_TOKEN=your_access_token
    
    # OpenAI API
-   OPENAI_API_KEY=votre_cle_api
+   OPENAI_API_KEY=your_api_key
    OPENAI_MODEL=gpt-4-turbo-preview
    ```
 
-## Démarrage
+## Getting Started
 
-Pour exécuter l'application en mode développement :
+To run the application in development mode:
 
 ```
-# Backend (dans un terminal)
+# Backend (in one terminal)
 cd server
 npm run dev
 
-# Frontend (dans un autre terminal)
+# Frontend (in another terminal)
 cd client
 npm start
 ```
 
-L'application sera accessible à l'adresse http://localhost:3000
+The application will be accessible at http://localhost:3000
 
-## Flux de travail
+## Workflow
 
-1. L'utilisateur saisit une description de l'audience souhaitée en langage naturel
-2. L'IA (OpenAI) traduit cette description en critères d'audience structurés
-3. L'application valide ces critères via l'API Marketing de Meta
-4. Si des critères n'existent pas sur Meta, l'IA suggère des alternatives
-5. L'application génère une définition d'audience finale, prête à être utilisée dans Meta Campaign Manager
+1. The user enters a desired audience description in natural language
+2. The AI (OpenAI) translates this description into structured audience criteria
+3. The application validates these criteria via the Meta Marketing API
+4. If some criteria do not exist on Meta, the AI suggests alternatives
+5. The application generates a final audience definition, ready to use in Meta Campaign Manager
 
-## Structure du code
+## Code Structure
 
 ### Backend
-- `server/src/index.js` - Point d'entrée du serveur
-- `server/src/services/` - Services pour OpenAI et Meta
-- `server/src/controllers/` - Contrôleurs pour gérer les requêtes API
-- `server/src/utils/` - Utilitaires pour la manipulation des audiences
+- `server/src/index.js` - Server entry point
+- `server/src/services/` - Services for OpenAI and Meta
+- `server/src/controllers/` - Controllers to handle API requests
+- `server/src/utils/` - Utilities for audience manipulation
 
 ### Frontend
-- `client/src/App.js` - Composant principal
-- `client/src/components/` - Composants React pour l'interface utilisateur
-- `client/src/services/` - Services pour communiquer avec l'API backend
+- `client/src/App.js` - Main component
+- `client/src/components/` - React components for the user interface
+- `client/src/services/` - Services to communicate with the backend API
 
-## Améliorations futures possibles
+## Possible Future Improvements
 
-- Ajout d'un système d'authentification
-- Sauvegarde des audiences générées dans une base de données
-- Option pour modifier manuellement les critères avant la finalisation
-- Exportation au format JSON pour intégration directe avec l'API Meta
-- Estimation de la taille d'audience plus précise
+- Add authentication system
+- Save generated audiences in a database
+- Option to manually edit criteria before finalization
+- Export as JSON for direct integration with the Meta API
+- More accurate audience size estimation
 
-## Licence
+## License
 
 MIT

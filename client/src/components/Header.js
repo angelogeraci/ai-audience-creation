@@ -1,8 +1,9 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Box, useTheme } from '@mui/material';
 import TargetIcon from '@mui/icons-material/TrackChanges';
+import SettingsIcon from '@mui/icons-material/Settings';
 
-const Header = () => {
+const Header = ({ onOpenSettings }) => {
   const theme = useTheme();
 
   return (
@@ -22,6 +23,9 @@ const Header = () => {
           <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
             Powered by OpenAI + Meta Marketing API
           </Typography>
+        </Box>
+        <Box sx={{ ml: 2 }}>
+          <SettingsIcon onClick={onOpenSettings} sx={{ cursor: 'pointer' }} />
         </Box>
       </Toolbar>
     </AppBar>

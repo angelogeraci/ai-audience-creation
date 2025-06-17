@@ -5,14 +5,14 @@ import App from './App';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
-// Thème personnalisé pour l'application
+// Custom theme for the application
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1877F2', // Bleu Facebook/Meta
+      main: '#ff964f', // Custom orange
     },
     secondary: {
-      main: '#42B72A', // Vert Facebook/Meta
+      main: '#42B72A', // Facebook/Meta green
     },
     background: {
       default: '#f5f5f5',

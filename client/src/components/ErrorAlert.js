@@ -5,7 +5,7 @@ const ErrorAlert = ({ message }) => {
   return (
     <Box sx={{ mb: 3 }}>
       <Alert severity="error" variant="filled">
-        <AlertTitle>Erreur</AlertTitle>
+        <AlertTitle>Error</AlertTitle>
         {message}
       </Alert>
     </Box>
